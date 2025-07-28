@@ -1,0 +1,44 @@
+
+reset()
+
+please give diameter:
+
+how many objects:
+
+please jog to each object location:
+
+location 1:
+
+location 2:
+
+..
+
+location x...:
+
+reset()
+
+LOOP:
+
+moveObj{
+
+jog location 1
+
+open grip
+
+jog for pickup
+
+close grip
+
+jog location 1
+
+jog to hoop
+
+open claw
+
+JUMP: LOOP
+
+reset()
+}
+
+
+

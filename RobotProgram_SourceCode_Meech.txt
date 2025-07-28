@@ -1,0 +1,304 @@
+/***********************************************************
+
+***********************************************************/
+//OLED LIBRARIES 
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#define OLED_RESET     4
+Adafruit_SSD1306 display(128, 64, &Wire, OLED_RESET);
+
+//SERVO CONTROL LIBRARY AND INITIALIZATION
+#include <Servo.h>
+Servo elbow_d5;//create servo object to control a servo
+Servo wrist_d3;
+Servo claw_d11;
+Servo base_d9;
+Servo shoulder_d6;
+
+int count = 20;
+int delay_val = 400;
+int delay_val_resetfx = 300;
+//for our motors, pulse width must be these default values to get an angle between 0 and 180.
+int pulse_width_min = 2400; //default is 2400
+int pulse_width_max = 544;  //default is 544
+int pause = map(analogRead(0), 0, 1023, 0, 180);  //use this value to use one of the potentiometer dials to pause the program. analgRead(0) refers to reading knob A0.
+
+//function declarations (all below functions written by Demetrius Johnson 7/26/22:
+void write_set_speed(Servo &joint, int angle, int execSpeed_ms);
+void homePOS();
+void reset();
+void testPos();
+void OLED_timer_countdownDelay(int time_seconds);
+void pause_exec_FX();
+void pause_atHome();
+
+
+void setup()
+{
+
+  //SET UP SERVOS //servo.attach(int pin) or servo.attach(pin, minPulseVal, maxPulseVal)
+  base_d9.attach(9, pulse_width_min, pulse_width_max);//base rotator / rotator cuff!  
+  shoulder_d6.attach(6);//bottom joint / shoulder! 
+  elbow_d5.attach(5);//middle joint / elbow!   
+  wrist_d3.attach(3);//top rotator / wrist  
+  claw_d11.attach(11);//claw / fingers!
+  //OLED_timer_countdownDelay(20);
+  //pause_atHome();
+  //OLED_timer_countdownDelay(1);
+  //testPos();
+  //OLED_timer_countdownDelay(1);
+  //reset();
+
+  //SETUP OLED SCREEN
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.setTextColor(WHITE);//Sets the font display color
+  display.clearDisplay();//cls
+  //Set the font size
+  display.setTextSize(2);
+  //Set the display location
+  display.setCursor(30,30);
+  //String displayed
+  display.print("TEST");
+  //Began to show
+  display.display();
+ 
+}
+//joint == name of the servo you want to move, 
+//angle == the angle you want to move the servo to, 
+//execSpeed_ms == total time (in ms) 
+//the move should take to complete
+//written by Demetrius Johnson
+void write_set_speed(Servo &joint, int angle, int execSpeed_ms)
+{
+  //read(); function gives current angle of the motor (0 to 180).
+  int angle_difference = angle - joint.read();
+  if(angle_difference == 0) //divide by 0 case and no need to do this function since no motion required.
+    return;
+  int pulse_ms = execSpeed_ms / angle_difference;
+  if(pulse_ms < 0)
+    pulse_ms *= -1; //make sure pulse time is positive or else delay() function will fail.
+  //if difference > 0, we need to use addition to get to goal; 
+  //if difference < 0, we need to use subtraction to get to goal.
+  
+  if(angle_difference > 0)
+  {
+    for(int i = joint.read(); i < angle; i++)
+    {
+      joint.write(i);  //write one degree
+      delay(pulse_ms); //delay for necessary ms so that when loop finally exits: speed of move == execSpeed_ms
+    }
+   }
+  else if(angle_difference < 0)
+  { 
+    for(int i = joint.read(); i > angle; i--)
+    {
+      joint.write(i);
+      delay(pulse_ms);
+    } 
+  }
+}
+void homePOS()
+{
+  int home_delay = 600;
+  write_set_speed(base_d9, 180, home_delay);//180
+ // delay(delay_val_resetfx);
+  write_set_speed(shoulder_d6, 0, home_delay);//0
+  //delay(delay_val_resetfx);
+  write_set_speed(elbow_d5, 15, home_delay);;//15
+  //delay(delay_val_resetfx);
+  write_set_speed(wrist_d3, 90, home_delay);;//90
+  //delay(delay_val_resetfx);
+  write_set_speed(claw_d11, 180, home_delay);//180 to 90 (less than 90 applies greater grip pressure from 90 to 0).
+
+}
+void reset()
+{
+  write_set_speed(base_d9, 180, delay_val_resetfx);//180
+ // delay(delay_val_resetfx);
+  write_set_speed(shoulder_d6, 0, delay_val_resetfx);//0
+  //delay(delay_val_resetfx);
+  write_set_speed(elbow_d5, 15, delay_val_resetfx);;//15
+  //delay(delay_val_resetfx);
+  write_set_speed(wrist_d3, 90, delay_val_resetfx);;//90
+  //delay(delay_val_resetfx);
+  write_set_speed(claw_d11, 180, delay_val_resetfx);//180 to 90 (less than 90 applies greater grip pressure from 90 to 0).
+
+}
+void testPos()
+{
+ write_set_speed(base_d9, 150, delay_val);//180
+ // delay(delay_val_resetfx);
+  write_set_speed(shoulder_d6, 30, delay_val);//0
+  //delay(delay_val_resetfx);
+  write_set_speed(elbow_d5, 30, delay_val);//15
+  //delay(delay_val_resetfx);
+  write_set_speed(wrist_d3, 60, delay_val);;//90
+  //delay(delay_val_resetfx);
+  write_set_speed(claw_d11, 90, delay_val);//180 to 90 (less than 90 applies greater grip pressure from 90 to 0).
+}
+//display a timer on the OLED screen. 
+//Time_seconds == the amount of time (in seconds) 
+//you want on the countdown timer.
+void OLED_timer_countdownDelay(int time_seconds)
+{
+
+  for(int i = time_seconds; i >= 0; i--)
+  {
+
+  //Set the display location
+  display.setCursor(30,30);
+  //String displayed
+  display.print("TEST");
+  display.print(i);
+  //Began to show
+  display.display();
+  delay(1000);
+  display.clearDisplay();
+  }
+}
+//below function written by Demetrius Johnson: pause the function and display timer for how long pause has lasted.
+//Use the A0 potentiometer knob mapped to 0 or 1 for true or false to exit or maintain pause.
+void pause_exec_FX()
+{
+  int pause_counter = 0;
+  pause = 90;
+  while(pause >= 90)
+  {
+  //Set the display location
+  display.setCursor(30,30);
+  //String displayed
+  display.print("PAUSED: ");
+  display.print(pause_counter);
+  //Began to show
+  display.display();
+  delay(1000);
+  display.clearDisplay();
+  pause_counter++;
+  //map analog potentiometer dial A0 (10 bits) to 0 to 180 degrees (values).
+  //if knob is turned at center or greater (90 to 180), loop will repeat (stay paused and count).
+  //else, function will exit ( values (degrees) 0 to 89)
+  pause = map(analogRead(0), 0, 1023, 0, 180); 
+  }
+}
+void pause_atHome()
+{
+ homePOS();//return home
+
+ //cut power to servos:
+
+  base_d9.detach();//base rotator / rotator cuff!  
+  shoulder_d6.detach();//bottom joint / shoulder! 
+  elbow_d5.detach();//middle joint / elbow!   
+  wrist_d3.detach();//top rotator / wrist  
+  claw_d11.detach();//claw / fingers!
+ 
+ pause_exec_FX(); //pause execution
+
+ //restore power to servos:
+
+  //SET UP SERVOS //servo.attach(int pin) or servo.attach(pin, minPulseVal, maxPulseVal)
+  base_d9.attach(9);//base rotator / rotator cuff!  
+  shoulder_d6.attach(6);//bottom joint / shoulder! 
+  elbow_d5.attach(5);//middle joint / elbow!   
+  wrist_d3.attach(3);//top rotator / wrist  
+  claw_d11.attach(11);//claw / fingers!
+}
+void loop()
+{
+  pause_atHome();
+  //pause_exec_FX();
+  OLED_timer_countdownDelay(1);
+//location 3
+ write_set_speed(base_d9, 90, delay_val);//180
+ // delay(delay_val_resetfx);
+  write_set_speed(shoulder_d6, 44, delay_val);//0
+  //delay(delay_val_resetfx);
+  write_set_speed(elbow_d5, 84, delay_val);//15
+  //delay(delay_val_resetfx);
+  write_set_speed(wrist_d3, 80, delay_val);;//90
+  //delay(delay_val_resetfx);
+  write_set_speed(claw_d11, 142, delay_val);//180 to 90 (less than 90 applies greater grip pressure from 90 to 0).
+
+ //OLED_timer_countdownDelay(1);
+//location 3
+ write_set_speed(base_d9, 90, delay_val);//180
+ // delay(delay_val_resetfx);
+  write_set_speed(shoulder_d6, 44, delay_val);//0
+  //delay(delay_val_resetfx);
+  write_set_speed(elbow_d5, 84, delay_val);//15
+  //delay(delay_val_resetfx);
+  write_set_speed(wrist_d3, 80, delay_val);;//90
+  //delay(delay_val_resetfx);
+  write_set_speed(claw_d11, 80, delay_val);//180 to 90 (less than 90 applies greater grip pressure from 90 to 0).
+  
+//OLED_timer_countdownDelay(1);
+//location 1
+ write_set_speed(base_d9, 179, delay_val);//180
+ // delay(delay_val_resetfx);
+  write_set_speed(shoulder_d6, 39, delay_val);//0
+  //delay(delay_val_resetfx);
+  write_set_speed(elbow_d5, 80, delay_val);//15
+  //delay(delay_val_resetfx);
+  write_set_speed(wrist_d3, 88, delay_val);;//90
+  //delay(delay_val_resetfx);
+  write_set_speed(claw_d11, 80, delay_val);//180 to 90 (less than 90 applies greater grip pressure from 90 to 0).
+
+//OLED_timer_countdownDelay(1);
+ 
+//location 2
+ write_set_speed(base_d9, 180, delay_val);//180
+ // delay(delay_val_resetfx);
+  write_set_speed(shoulder_d6, 69, delay_val);//0
+  //delay(delay_val_resetfx);
+  write_set_speed(elbow_d5, 109, delay_val);//15
+  //delay(delay_val_resetfx);
+  write_set_speed(wrist_d3, 0, delay_val);//90
+  write_set_speed(wrist_d3, 88, delay_val);//90
+  //delay(delay_val_resetfx);
+  write_set_speed(claw_d11, 142, delay_val);//180 to 90 (less than 90 applies greater grip pressure from 90 to 0).
+  //OLED_timer_countdownDelay(1);
+  write_set_speed(claw_d11, 80, delay_val);//180 to 90 (less than 90 applies greater grip pressure from 90 to 0).
+
+  //OLED_timer_countdownDelay(1);
+//location 1
+ write_set_speed(base_d9, 179, delay_val);//180
+ // delay(delay_val_resetfx);
+  write_set_speed(shoulder_d6, 39, delay_val);//0
+  //delay(delay_val_resetfx);
+  write_set_speed(elbow_d5, 80, delay_val);//15
+  //delay(delay_val_resetfx);
+  write_set_speed(wrist_d3, 88, delay_val);;//90
+  //delay(delay_val_resetfx);
+  write_set_speed(claw_d11, 80, delay_val);//180 to 90 (less than 90 applies greater grip pressure from 90 to 0).
+
+  //OLED_timer_countdownDelay(1);
+//location 3
+ write_set_speed(base_d9, 90, delay_val);//180
+ // delay(delay_val_resetfx);
+  write_set_speed(shoulder_d6, 44, delay_val);//0
+  //delay(delay_val_resetfx);
+  write_set_speed(elbow_d5, 84, delay_val);//15
+  //delay(delay_val_resetfx);
+  write_set_speed(wrist_d3, 80, delay_val);;//90
+  //delay(delay_val_resetfx);
+  write_set_speed(claw_d11, 142, delay_val);//180 to 90 (less than 90 applies greater grip pressure from 90 to 0).
+
+ 
+//location 2
+ write_set_speed(base_d9, 130, delay_val);//180
+ // delay(delay_val_resetfx);
+  write_set_speed(shoulder_d6, 69, delay_val);//0
+  //delay(delay_val_resetfx);
+  write_set_speed(elbow_d5, 109, delay_val);//15
+  //delay(delay_val_resetfx);
+  write_set_speed(wrist_d3, 0, delay_val);//90
+  write_set_speed(wrist_d3, 88, delay_val);//90
+  //delay(delay_val_resetfx);
+  write_set_speed(claw_d11, 142, delay_val);//180 to 90 (less than 90 applies greater grip pressure from 90 to 0).
+ // OLED_timer_countdownDelay(1);
+  write_set_speed(claw_d11, 80, delay_val);//180 to 90 (less than 90 applies greater grip pressure from 90 to 0).
+
+  
+  
+}
